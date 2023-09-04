@@ -5,14 +5,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Set;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class GrantAccessToClientAppDto {
-    private String clientId;
-    private Set<String> scopes;
+    private String client_id;
+    private String scope; // http url param encoded
     private Long expiredTime;
+
+    private String response_type;
+    private String redirect_url;
+    private String state;
 }

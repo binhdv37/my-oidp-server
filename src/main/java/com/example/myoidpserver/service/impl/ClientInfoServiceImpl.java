@@ -100,7 +100,7 @@ public class ClientInfoServiceImpl implements ClientInfoService {
         UserInfo userInfo = currentUserService.getCurrentUser();
         User user = userRepository.getById(userInfo.getId());
         approvedSite.setUser(user);
-        ClientInfo clientInfo = this.validateExistAndReturnByClientId(dto.getClientId());
+        ClientInfo clientInfo = this.validateExistAndReturnByClientId(dto.getClient_id());
         approvedSite.setClientInfo(clientInfo);
         approvedSite.setApprovedDate(new Date());
         if (dto.getExpiredTime() != null) approvedSite.setExpiredDate(new Date(dto.getExpiredTime() * 1000));
