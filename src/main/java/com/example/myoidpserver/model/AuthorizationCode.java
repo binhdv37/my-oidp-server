@@ -25,7 +25,8 @@ public class AuthorizationCode {
     @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private Date expiredDate;
 
-    @OneToOne(mappedBy = "authorizationCode")
+    @OneToOne
+    @JoinColumn(name = "authentication_holder_id", referencedColumnName = "id")
     private AuthenticationHolder authenticationHolder;
 
 }

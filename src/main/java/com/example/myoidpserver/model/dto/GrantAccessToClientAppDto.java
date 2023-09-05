@@ -10,11 +10,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class GrantAccessToClientAppDto {
-    private String client_id;
+    private String clientId;
     private String scope; // http url param encoded
     private Long expiredTime;
-
-    private String response_type;
-    private String redirect_url;
+    private String responseType;
+    private String redirectUrl;
     private String state;
 }

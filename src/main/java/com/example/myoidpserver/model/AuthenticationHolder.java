@@ -36,8 +36,7 @@ public class AuthenticationHolder {
     @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private Date expiredDate;
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "authorization_code_id", referencedColumnName = "id")
+    @OneToOne(mappedBy = "authenticationHolder")
     private AuthorizationCode authorizationCode;
 
     @OneToMany(mappedBy = "authenticationHolder")

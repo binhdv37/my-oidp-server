@@ -16,6 +16,7 @@ import org.springframework.util.Base64Utils;
 import javax.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ClientInfoServiceImpl implements ClientInfoService {
@@ -40,6 +41,18 @@ public class ClientInfoServiceImpl implements ClientInfoService {
 
     @Autowired
     private ApprovedSiteScopeRepository approvedSiteScopeRepository;
+
+    @Autowired
+    private AuthenticationHolderRepository authenticationHolderRepository;
+
+    @Autowired
+    private AuthorizationCodeRepository authorizationCodeRepository;
+
+    @Autowired
+    private AuthenticationHolderScopeRepository authenticationHolderScopeRepository;
+
+    @Autowired
+    private AuthenticationHolderParamRepository authenticationHolderParamRepository;
 
     @Autowired
     private CurrentUserService currentUserService;
@@ -96,19 +109,22 @@ public class ClientInfoServiceImpl implements ClientInfoService {
     @Transactional
     @Override
     public String grantAccessToClientApp(GrantAccessToClientAppDto dto) {
-        ApprovedSite approvedSite = new ApprovedSite();
+        Date now = new Date();
         UserInfo userInfo = currentUserService.getCurrentUser();
         User user = userRepository.getById(userInfo.getId());
+        ClientInfo clientInfo = this.validateExistAndReturnByClientId(dto.getClientId());
+
+        ApprovedSite approvedSite = approvedSiteRepository.findByUserIdAndClientInfoId(user.getId(), clientInfo.getId());
         approvedSite.setUser(user);
-        ClientInfo clientInfo = this.validateExistAndReturnByClientId(dto.getClient_id());
         approvedSite.setClientInfo(clientInfo);
-        approvedSite.setApprovedDate(new Date());
+        approvedSite.setApprovedDate(now);
         if (dto.getExpiredTime() != null) approvedSite.setExpiredDate(new Date(dto.getExpiredTime() * 1000));
         approvedSite = approvedSiteRepository.save(approvedSite);
 
         List<ApprovedSiteScope> approvedSiteScopes = new ArrayList<>();
-        List<SystemScope> systemScopes = systemScopeRepository.findAllByScopeIn(new ArrayList<>(dto.getScopes()));
-        for (String scope : dto.getScopes()) {
+        List<String> reqScopes = this.getScopesParam(dto.getScope());
+        List<SystemScope> systemScopes = systemScopeRepository.findAllByScopeIn(reqScopes);
+        for (String scope : reqScopes) {
             SystemScope systemScope = systemScopes.stream().filter(s -> s.getScope().equals(scope)).findFirst().orElse(null);
             if (systemScope != null) {
                 ApprovedSiteScope approvedSiteScope = new ApprovedSiteScope();
@@ -123,11 +139,37 @@ public class ClientInfoServiceImpl implements ClientInfoService {
         }
         approvedSiteScopeRepository.saveAll(approvedSiteScopes);
 
-        return this.generateAuthorizatonCode();
+        // authentication holder
+        AuthenticationHolder authenticationHolder = new AuthenticationHolder();
+        authenticationHolder.setUserId(user.getId());
+        authenticationHolder.setClientInfoId(clientInfo.getId());
+        authenticationHolder.setRedirectUrl(dto.getRedirectUrl());
+        authenticationHolder.setRequestDate(now);
+        authenticationHolder.setExpiredDate(new Date(now.getTime() + 300000)); // default 5m
+        authenticationHolder = authenticationHolderRepository.save(authenticationHolder);
+
+        String code = this.generateAuthorizatonCode();
+        AuthorizationCode authorizationCode = new AuthorizationCode();
+        authorizationCode.setCode(code);
+        authorizationCode.setExpiredDate(new Date(now.getTime() + 300000)); // default 5 min
+        authorizationCode.setAuthenticationHolder(authenticationHolder);
+        authorizationCode = authorizationCodeRepository.save(authorizationCode);
+
+        List<AuthenticationHolderScope> authenticationHolderScopes = new ArrayList<>();
+
+
+        return code;
     }
 
     private String generateAuthorizatonCode() {
         return Base64Utils.encodeToString(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private List<String> getScopesParam(String scope) {
+        while (scope.contains("  ")) {
+            scope = scope.replaceAll("  ", " ");
+        }
+        return Arrays.asList(scope.split(" ")).stream().filter(x -> !x.equals("")).collect(Collectors.toList());
     }
 
 }
